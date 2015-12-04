@@ -140,6 +140,8 @@ source openrpt.sh
 log "Installing pre-requisite packages..."
 install_prereqs
 
+set_locale
+
 # if we were given command line options for installation process them now
 if [ $INSTALLALL ]; then
     log "Executing full provision..."

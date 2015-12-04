@@ -89,6 +89,11 @@ runasroot() {
 # as we add more supported distros
 install_prereqs() {
 
+    sudo apt-get -q -y update && \
+    DEBIAN_FRONTEND=noninteractive sudo apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" --fix-missing upgrade && \
+    DEBIAN_FRONTEND=noninteractive sudo apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" --fix-missing dist-upgrade;
+    sudo apt-get -q -y install zsh vim
+
     case "$DISTRO" in
         "ubuntu")
                 install_pg_repo
@@ -166,6 +171,12 @@ test_connection() {
         sleep 5
     done
 }
+
+set_locale() {
+    locale-gen en_US.UTF-8
+    export TIMEZONE=$(cat /etc/timezone)
+}
+
 # define some colors if the tty supports it
 if [[ -t 1 && ! $COLOR = "NO" ]]; then
   COLOR1='\e[1;39m'
