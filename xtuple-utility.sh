@@ -12,6 +12,7 @@ _XTVERSION=${XTVERSION//./}
 export INSTANCE=xtuple
 export DBTYPE=demo
 export PGDATABASE="$DBTYPE""$_XTVERSION"
+export DEPLOYER_NAME=`whoami`
 # import supporting scripts
 source common.sh
 source logging.sh

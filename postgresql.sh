@@ -402,6 +402,29 @@ provision_cluster() {
 
 }
 
+provision_ecom_cluster() {
+
+    set_ecommerce_info
+
+    sudo -u postgres psql postgres --command="CREATE USER ${DEVELOPMENT_DB_USER} PASSWORD '${DEVELOPMENT_DB_PASS}'"
+    sudo -u postgres psql postgres --command="CREATE DATABASE ${DEVELOPMENT_DB_NAME} OWNER ${DEVELOPMENT_DB_USER}"
+
+    sudo -u postgres psql postgres --command="CREATE USER ${STAGE_DB_USER} PASSWORD '${STAGE_DB_PASS}'"
+    sudo -u postgres psql postgres --command="CREATE DATABASE ${STAGE_DB_NAME} OWNER ${STAGE_DB_USER}"
+
+    sudo -u postgres psql postgres --command="CREATE USER ${PRODUCTION_DB_USER} PASSWORD '${PRODUCTION_DB_PASS}'"
+    sudo -u postgres psql postgres --command="CREATE DATABASE ${PRODUCTION_DB_NAME} OWNER ${PRODUCTION_DB_USER}"
+
+    sudo sed -i '/^host    all             all             127.0.0.1\/32            md5/ s/^/#/' /etc/postgresql/9.3/main/pg_hba.conf
+
+    sudo sed -i '/^#host    all             all             127.0.0.1\/32            md5/ a\
+    host    '${DEVELOPMENT_DB_NAME}'     '${DEVELOPMENT_DB_USER}'     127.0.0.1\/32            trust\
+    host    '${STAGE_DB_NAME}'           '${STAGE_DB_USER}'           127.0.0.1\/32            trust\
+    host    '${PRODUCTION_DB_NAME}'      '${PRODUCTION_DB_USER}'      127.0.0.1\/32            trust' /etc/postgresql/9.3/main/pg_hba.conf
+
+    sudo service postgresql restart
+}
+
 # $1 is version
 # $2 is name
 # $3 is mode (auto/manual)
