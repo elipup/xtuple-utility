@@ -99,6 +99,7 @@ install_prereqs() {
     case "$DISTRO" in
         "ubuntu")
                 install_pg_repo
+			 install_mongo_repo
                 sudo apt-get update
                 sudo apt-get -y install axel git whiptail unzip bzip2 wget curl build-essential libssl-dev postgresql-client-$PGVERSION cups python-software-properties openssl libnet-ssleay-perl libauthen-pam-perl libpam-runtime libio-pty-perl perl libavahi-compat-libdnssd-dev python xvfb 
                 RET=$?
@@ -111,6 +112,7 @@ install_prereqs() {
                 ;;
         "debian")
                 install_pg_repo
+			 install_mongo_repo
                 sudo apt-get update
                 sudo apt-get -y install python-software-properties software-properties-common xvfb
                 if [ ! "$(find /etc/apt/ -name *.list | xargs cat | grep  ^[[:space:]]*deb | grep backports)" ]; then
@@ -153,6 +155,22 @@ install_pg_repo() {
     esac
 }
 
+install_mongo_repo() {
+
+    case "$CODENAME" in
+        "trusty") ;&
+        "utopic") ;&
+        "wheezy") ;&
+        "jessie")
+            # check to make sure the PostgreSQL repo is already added on the system
+            if [ ! -f /etc/apt/sources.list.d/mongodb-org-3.0.list ] || ! grep -q "repo.mongodb.org" /etc/apt/sources.list.d/mongodb-org-3.0.list; then
+		      sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 7F0CEB10
+                echo "deb http://repo.mongodb.org/apt/ubuntu trusty/mongodb-org/3.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-3.0.list
+            fi
+        ;;
+    esac
+}
+
 # $1 is the port
 # $2 is protocol
 is_port_open() {
@@ -180,6 +198,98 @@ test_connection() {
 set_locale() {
     locale-gen en_US.UTF-8
     export TIMEZONE=$(cat /etc/timezone)
+}
+
+set_ecommerce_info() {
+    if [ -z $DEVELOPMENT_DB_NAME ]; then
+        DEVELOPMENT_DB_NAME=$(whiptail --backtitle "$( window_title )" --inputbox "Server Name (Domain name)" 8 60 "development" 3>&1 1>&2 2>&3)
+        RET=$?
+        if [ $RET -ne 0 ]; then
+            return $RET
+        else
+            export DEVELOPMENT_DB_NAME
+        fi
+    fi
+
+    if [ -z $DEVELOPMENT_DB_USER ]; then
+        DEVELOPMENT_DB_USER=$(whiptail --backtitle "$( window_title )" --inputbox "Server Name (Domain name)" 8 60 "development" 3>&1 1>&2 2>&3)
+        RET=$?
+        if [ $RET -ne 0 ]; then
+            return $RET
+        else
+            export DEVELOPMENT_DB_USER
+        fi
+    fi
+
+    if [ -z $DEVELOPMENT_DB_PASS ]; then
+        DEVELOPMENT_DB_PASS=$(whiptail --backtitle "$( window_title )" --passwordbox "Server Name (Domain name)" 8 60 3>&1 1>&2 2>&3)
+        RET=$?
+        if [ $RET -ne 0 ]; then
+            return $RET
+        else
+            export DEVELOPMENT_DB_PASS
+        fi
+    fi
+
+    if [ -z $STAGE_DB_NAME ]; then
+        STAGE_DB_NAME=$(whiptail --backtitle "$( window_title )" --inputbox "Server Name (Domain name)" 8 60 "stage" 3>&1 1>&2 2>&3)
+        RET=$?
+        if [ $RET -ne 0 ]; then
+            return $RET
+        else
+            export STAGE_DB_NAME
+        fi
+    fi
+
+    if [ -z $STAGE_DB_USER ]; then
+        STAGE_DB_USER=$(whiptail --backtitle "$( window_title )" --inputbox "Server Name (Domain name)" 8 60 "stage" 3>&1 1>&2 2>&3)
+        RET=$?
+        if [ $RET -ne 0 ]; then
+            return $RET
+        else
+            export STAGE_DB_USER
+        fi
+    fi
+
+    if [ -z $STAGE_DB_PASS ]; then
+        STAGE_DB_PASS=$(whiptail --backtitle "$( window_title )" --passwordbox "Server Name (Domain name)" 8 60 3>&1 1>&2 2>&3)
+        RET=$?
+        if [ $RET -ne 0 ]; then
+            return $RET
+        else
+            export STAGE_DB_PASS
+        fi
+    fi
+
+    if [ -z $PRODUCTION_DB_NAME ]; then
+        PRODUCTION_DB_NAME=$(whiptail --backtitle "$( window_title )" --inputbox "Server Name (Domain name)" 8 60 "production" 3>&1 1>&2 2>&3)
+        RET=$?
+        if [ $RET -ne 0 ]; then
+            return $RET
+        else
+            export PRODUCTION_DB_NAME
+        fi
+    fi
+
+    if [ -z $PRODUCTION_DB_USER ]; then
+        PRODUCTION_DB_USER=$(whiptail --backtitle "$( window_title )" --inputbox "Server Name (Domain name)" 8 60 "production" 3>&1 1>&2 2>&3)
+        RET=$?
+        if [ $RET -ne 0 ]; then
+            return $RET
+        else
+            export PRODUCTION_DB_USER
+        fi
+    fi
+
+    if [ -z $PRODUCTION_DB_PASS ]; then
+        PRODUCTION_DB_PASS=$(whiptail --backtitle "$( window_title )" --passwordbox "Server Name (Domain name)" 8 60 3>&1 1>&2 2>&3)
+        RET=$?
+        if [ $RET -ne 0 ]; then
+            return $RET
+        else
+            export PRODUCTION_DB_PASS
+        fi
+    fi
 }
 
 # define some colors if the tty supports it

@@ -12,6 +12,8 @@ export INSTANCE=xtuple
 export DBTYPE=demo
 export DATABASE=${DBTYPE}${XTVERSION//./}
 export CONTAINER=false
+export PGDATABASE="$DBTYPE""$_XTVERSION"
+export DEPLOYER_NAME=`whoami`
 # import supporting scripts
 source common.sh
 source logging.sh
