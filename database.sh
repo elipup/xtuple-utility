@@ -682,7 +682,7 @@ set_database_info_select() {
 set_database_info_manual() {
 
     if [ -z $PGHOST ]; then
-        PGHOST=$(whiptail --backtitle "$( window_title )" --inputbox "Hostname" 8 60 3>&1 1>&2 2>&3)
+        PGHOST=$(whiptail --backtitle "$( window_title )" --inputbox "Postgres IP address" 8 60 "localhost" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
             unset PGHOST && unset PGPORT && unset PGUSER && unset PGPASSWORD
@@ -692,7 +692,7 @@ set_database_info_manual() {
         fi
     fi
     if [ -z $PGPORT ] ; then
-        PGPORT=$(whiptail --backtitle "$( window_title )" --inputbox "Port" 8 60 3>&1 1>&2 2>&3)
+        PGPORT=$(whiptail --backtitle "$( window_title )" --inputbox "Postgres Port" 8 60 "5432" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
             unset PGHOST && unset PGPORT && unset PGUSER && unset PGPASSWORD
@@ -702,7 +702,7 @@ set_database_info_manual() {
         fi
     fi
     if [ -z $PGUSER ] ; then
-        PGUSER=$(whiptail --backtitle "$( window_title )" --inputbox "Username" 8 60 3>&1 1>&2 2>&3)
+        PGUSER=$(whiptail --backtitle "$( window_title )" --inputbox "Postgres Username" 8 60 "postgres" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
             unset PGHOST && unset PGPORT && unset PGUSER && unset PGPASSWORD
@@ -712,7 +712,7 @@ set_database_info_manual() {
         fi
     fi
     if [ -z $PGPASSWORD ] ; then
-        PGPASSWORD=$(whiptail --backtitle "$( window_title )" --passwordbox "Password" 8 60 3>&1 1>&2 2>&3)
+        PGPASSWORD=$(whiptail --backtitle "$( window_title )" --passwordbox "Postgres Password (default postgres)" 8 60 "postgres" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
             unset PGHOST && unset PGPORT && unset PGUSER && unset PGPASSWORD

@@ -136,6 +136,11 @@ source provision.sh
 source nginx.sh
 source mobileclient.sh
 source openrpt.sh
+source mongo.sh
+source php.sh
+source postfix.sh
+source ruby.sh
+source ecommerce.sh
 
 # kind of hard to build whiptail menus without whiptail installed
 log "Installing pre-requisite packages..."

@@ -7,9 +7,10 @@ nginx_menu() {
     while true; do
         NGM=$(whiptail --backtitle "xTuple Utility v$_REV" --menu "$( menu_title nginx\ Menu )" 0 0 4 --cancel-button "Cancel" --ok-button "Select" \
             "1" "Install nginx" \
-            "2" "Configure nginx" \
-            "3" "Remove nginx" \
-            "4" "Return to main menu" \
+            "2" "Configure nginx for ERP" \
+		  "3" "Configure nginx for eCommerce" \
+            "4" "Remove nginx" \
+            "5" "Return to main menu" \
             3>&1 1>&2 2>&3)
 
         RET=$?
@@ -19,9 +20,10 @@ nginx_menu() {
         else
             case "$NGM" in
             "1") log_choice install_nginx ;;
-            "2") log_choice configure_nginx ;;
-            "3") log_choice remove_nginx ;;
-            "4") break ;;
+            "2") log_choice configure_nginx_mwc ;;
+		  "3") log_choice configure_nginx_ecom ;;
+            "4") log_choice remove_nginx ;;
+            "5") break ;;
             *) msgbox "How did you get here? nginx_menu $NGM" && break ;;
             esac
         fi
@@ -129,6 +131,26 @@ nginx_prompt() {
     fi
 }
 
+prep_nginx() {
+    sudo mv /etc/nginx/nginx.conf /etc/nginx/nginx.conf.original
+    sudo cp $WORKDIR/nginx/nginx.conf /etc/nginx/
+
+    sudo mv /etc/nginx/mime.types /etc/nginx/mime.types.original
+    sudo cp $WORKDIR/nginx/mime.types /etc/nginx/
+
+    sudo mv /etc/nginx/fastcgi_params /etc/nginx/fastcgi_params.original
+    sudo cp $WORKDIR/nginx/fastcgi_params /etc/nginx/
+
+    sudo cp -R $WORKDIR/nginx/apps /etc/nginx/
+    sudo cp -R $WORKDIR/nginx/conf.d/* /etc/nginx/conf.d/
+
+    # Set default domain to return 404 for non-setup URLs
+    sudo cp $WORKDIR/nginx/sites-available/default.conf.template /etc/nginx/sites-available/default.http.conf && \
+    sudo ln -s /etc/nginx/sites-available/default.http.conf /etc/nginx/sites-enabled/default.http.conf
+
+    sudo rm /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default 2>&1 >/dev/null
+}
+
 # $1 is hostname for nginx
 # $2 is domain name
 # $3 is the site name to use
@@ -136,7 +158,7 @@ nginx_prompt() {
 # $5 specifies a cert file
 # $6 specifies a key file
 # $7 is the port to use
-configure_nginx()
+configure_nginx_mwc()
 {
     log "Configuring nginx"
 
@@ -172,20 +194,21 @@ configure_nginx()
 
     log_arg $NGINX_HOSTNAME $NGINX_DOMAIN $NGINX_SITE $NGINX_CERT $NGINX_KEY $NGINX_PORT
 
-    sudo rm /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default 2>&1 >/dev/null
-    sudo cp templates/nginx-site /etc/nginx/sites-available/$NGINX_SITE
-    sudo sed -i -e "s/DOMAINNAME/$NGINX_DOMAIN/" -e "s/HOSTNAME/$NGINX_HOSTNAME/" /etc/nginx/sites-available/$NGINX_SITE
+    prep_nginx
+
+    log_exec sudo cp $WORKDIRtemplates/nginx-site /etc/nginx/sites-available/$NGINX_SITE
+    log_exec sudo sed -i -e "s/DOMAINNAME/$NGINX_DOMAIN/" -e "s/HOSTNAME/$NGINX_HOSTNAME/" /etc/nginx/sites-available/$NGINX_SITE
     RET=$?
     if [ $RET -ne 0 ]; then
         msgbox "Error configuring nginx.  Check site file in /etc/nginx/sites-available"
         return $RET
     fi
 
-    sudo ln -s /etc/nginx/sites-available/$NGINX_HOSTNAME /etc/nginx/sites-enabled/$NGINX_HOSTNAME
+    log_exec sudo ln -s /etc/nginx/sites-available/$NGINX_HOSTNAME /etc/nginx/sites-enabled/$NGINX_HOSTNAME
 
     if [ -z "$4" ] || [ "$4" = "true" ]; then
-        sudo mkdir -p /etc/xtuple/ssl
-        sudo openssl req -x509 -newkey rsa:2048 -subj /CN=$NGINX_HOSTNAME.$NGINX_DOMAIN -days 365 -nodes \
+        log_exec sudo mkdir -p /etc/xtuple/ssl
+        log_exec sudo openssl req -x509 -newkey rsa:2048 -subj /CN=$NGINX_HOSTNAME.$NGINX_DOMAIN -days 365 -nodes \
             -keyout $NGINX_KEY -out $NGINX_CERT
         RET=$?
         if [ $RET -ne 0 ]; then
@@ -194,10 +217,10 @@ configure_nginx()
         fi
     fi
 
-    sudo sed -i -e 's/SERVER_CRT/'$NGINX_CERT'/g' -e 's/SERVER_KEY/'$NGINX_KEY'/g' /etc/nginx/sites-available/$NGINX_SITE
-    sudo sed -i 's/MWCPORT/'$NGINX_PORT'/g' /etc/nginx/sites-available/$NGINX_SITE
+    log_exec sudo sed -i -e 's/SERVER_CRT/'$NGINX_CERT'/g' -e 's/SERVER_KEY/'$NGINX_KEY'/g' /etc/nginx/sites-available/$NGINX_SITE
+    log_exec sudo sed -i 's/MWCPORT/'$NGINX_PORT'/g' /etc/nginx/sites-available/$NGINX_SITE
 
-    sudo nginx -s reload
+    log_exec sudo nginx -s reload
     RET=$?
     if [ $RET -ne 0 ]; then
         msgbox "Reloading nginx configuration failed. Check the log file for errors."
@@ -205,6 +228,98 @@ configure_nginx()
     else
         msgbox "nginx installed and configured successfully."
     fi
+}
+
+nginx_ecom_prompt() {
+    if [ -z $NGINX_ECOM_DOMAIN ]; then
+        NGINX_ECOM_DOMAIN=$(whiptail --backtitle "$( window_title )" --inputbox "Domain name for ecommerce" 8 60 3>&1 1>&2 2>&3)
+        RET=$?
+        if [ $RET -ne 0 ]; then
+            clear_nginx_settings
+            return $RET
+        else
+            export NGINX_ECOM_DOMAIN
+        fi
+    fi
+    
+    if [ -z $NGINX_DOMAIN_ALIAS ]; then
+        NGINX_DOMAIN_ALIAS=$(whiptail --backtitle "$( window_title )" --inputbox "Domain Alias" 8 60 3>&1 1>&2 2>&3)
+        RET=$?
+        if [ $RET -ne 0 ]; then
+            clear_nginx_settings
+            return $RET
+        else
+            export NGINX_DOMAIN_ALIAS
+        fi
+    fi
+
+    if [ -z $HTTP_AUTH_PASS ]; then
+        HTTP_AUTH_PASS=$(whiptail --backtitle "$( window_title )" --inputbox --passwordbox "HTTP Authorization Password" 8 60 3>&1 1>&2 2>&3)
+        RET=$?
+        if [ $RET -ne 0 ]; then
+            clear_nginx_settings
+            return $RET
+        else
+            export HTTP_AUTH_PASS
+        fi
+    fi
+}
+
+configure_nginx_ecom() {
+    log "Configuring nginx"
+
+    if [ -n "$1" ]; then
+        NGINX_ECOM_DOMAIN=$1
+    fi
+    
+    if [ -n "$2" ]; then
+        NGINX_DOMAIN_ALIAS=$2
+    fi
+
+    if [ -n "$3" ]; then
+        HTTP_AUTH_PASS=$3
+    fi
+
+    nginx_ecom_prompt
+    
+    prep_nginx
+
+    environments=("dev" "stage" "live")
+    for ENVIRONMENT in "${environments[@]}"
+    do
+        # Set dev and live domain aliases (for development)
+        log_exec sudo cp $WORKDIR/nginx/sites-available/stage.conf.template /etc/nginx/sites-available/${ENVIRONMENT}.http.conf
+        log_exec sudo sed -i "s/{DOMAIN_ALIAS}/${NGINX_DOMAIN_ALIAS}/g" /etc/nginx/sites-available/${ENVIRONMENT}.http.conf
+        log_exec sudo sed -i "s/{ENVIRONMENT}/${ENVIRONMENT}/g" /etc/nginx/sites-available/${ENVIRONMENT}.http.conf
+        log_exec sudo ln -s /etc/nginx/sites-available/${ENVIRONMENT}.http.conf /etc/nginx/sites-enabled/${ENVIRONMENT}.http.conf
+
+        log_exec sudo mkdir -p /var/log/nginx/${ENVIRONMENT}
+        log_exec sudo mkdir -p /var/www/${ENVIRONMENT}
+
+        # Set real domain for production usage (with or without SSL)
+        if [ ${ENVIRONMENT} = "live" ]
+        then
+            if [ ${SSL} = "ssl" ]
+            then
+                log_exec sudo cp $WORKDIR/nginx/sites-available/https.conf.template /etc/nginx/sites-available/https.conf
+                log_exec sudo sed -i "s/{DOMAIN}/${NGINX_ECOM_DOMAIN}/g" /etc/nginx/conf.d/ssl.conf
+                log_exec sudo sed -i "s/{DOMAIN}/${NGINX_ECOM_DOMAIN}/g" /etc/nginx/sites-available/https.conf
+                log_exec sudo sed -i "s/{ENVIRONMENT}/${ENVIRONMENT}/g" /etc/nginx/sites-available/https.conf
+                log_exec sudo ln -s /etc/nginx/sites-available/https.conf /etc/nginx/sites-enabled/https.conf
+            else
+                log_exec sudo cp $WORKDIR/nginx/sites-available/http.conf.template /etc/nginx/sites-available/http.conf
+                log_exec sudo sed -i "s/{DOMAIN}/${NGINX_ECOM_DOMAIN}/g" /etc/nginx/sites-available/http.conf
+                log_exec sudo sed -i "s/{ENVIRONMENT}/${ENVIRONMENT}/g" /etc/nginx/sites-available/http.conf
+                log_exec sudo ln -s /etc/nginx/sites-available/http.conf /etc/nginx/sites-enabled/http.conf
+            fi
+        fi
+    done
+
+    log_exec chown -R ${DEPLOYER_NAME}:${DEPLOYER_NAME} /var/www/*
+
+    log_exec sudo htpasswd -b -c /var/www/.htpasswd xtuple ${HTTP_AUTH_PASS}
+
+    log_exec sudo service nginx restart
 }
 
 remove_nginx() {

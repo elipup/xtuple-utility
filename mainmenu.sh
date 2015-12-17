@@ -7,7 +7,8 @@ extras_menu() {
 
         CC=$(whiptail --backtitle "$( window_title )" --menu "$( menu_title Extras\ Menu )" 0 0 1 --cancel-button "Cancel" --ok-button "Select" \
             "1" "Install Prerequisites" \
-            "2" "Return to main menu" \
+		  "2" "Setup eCommerce Environment" \
+            "3" "Return to main menu" \
             3>&1 1>&2 2>&3)
         
         RET=$?
@@ -17,7 +18,8 @@ extras_menu() {
         else
             case "$CC" in
             "1") install_prereqs ;;
-            "2") break ;;
+		  "2") setup_ecommerce ;;
+            "3") break ;;
             *) msgbox "Don't know how you got here! Please report on GitHub >> extras_menu $CC" && break ;;
             esac
         fi

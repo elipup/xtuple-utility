@@ -404,25 +404,33 @@ provision_cluster() {
 
 provision_ecom_cluster() {
 
+    set_database_info_manual
     set_ecommerce_info
 
-    sudo -u postgres psql postgres --command="CREATE USER ${DEVELOPMENT_DB_USER} PASSWORD '${DEVELOPMENT_DB_PASS}'"
-    sudo -u postgres psql postgres --command="CREATE DATABASE ${DEVELOPMENT_DB_NAME} OWNER ${DEVELOPMENT_DB_USER}"
+    provision_cluster $PGVERSION ecommerce $PGPORT $LANG true auto
 
-    sudo -u postgres psql postgres --command="CREATE USER ${STAGE_DB_USER} PASSWORD '${STAGE_DB_PASS}'"
-    sudo -u postgres psql postgres --command="CREATE DATABASE ${STAGE_DB_NAME} OWNER ${STAGE_DB_USER}"
+    log_exec psql -h $PGHOST -p $PGPORT -U $PGUSER postgres -q -c "CREATE USER ${DEVELOPMENT_DB_USER} PASSWORD '${DEVELOPMENT_DB_PASS}'" && \
+    log_exec psql -h $PGHOST -p $PGPORT -U $PGUSER postgres -q -c "CREATE DATABASE ${DEVELOPMENT_DB_NAME} OWNER ${DEVELOPMENT_DB_USER}" && \
 
-    sudo -u postgres psql postgres --command="CREATE USER ${PRODUCTION_DB_USER} PASSWORD '${PRODUCTION_DB_PASS}'"
-    sudo -u postgres psql postgres --command="CREATE DATABASE ${PRODUCTION_DB_NAME} OWNER ${PRODUCTION_DB_USER}"
+    log_exec psql -h $PGHOST -p $PGPORT -U $PGUSER postgres -q -c "CREATE USER ${STAGE_DB_USER} PASSWORD '${STAGE_DB_PASS}'" && \
+    log_exec psql -h $PGHOST -p $PGPORT -U $PGUSER postgres -q -c "CREATE DATABASE ${STAGE_DB_NAME} OWNER ${STAGE_DB_USER}" && \
 
-    sudo sed -i '/^host    all             all             127.0.0.1\/32            md5/ s/^/#/' /etc/postgresql/9.3/main/pg_hba.conf
+    log_exec psql -h $PGHOST -p $PGPORT -U $PGUSER postgres -q -c "CREATE USER ${PRODUCTION_DB_USER} PASSWORD '${PRODUCTION_DB_PASS}'" && \
+    log_exec psql -h $PGHOST -p $PGPORT -U $PGUSER postgres -q -c "CREATE DATABASE ${PRODUCTION_DB_NAME} OWNER ${PRODUCTION_DB_USER}"
+    if [ $RET -ne 0 ]; then
+        return $RET
+    fi
 
-    sudo sed -i '/^#host    all             all             127.0.0.1\/32            md5/ a\
+    log_exec sudo sed -i '/^host    all             all             127.0.0.1\/32            md5/ s/^/#/' /etc/postgresql/9.3/ecommerce/pg_hba.conf
+
+    log_exec sudo sed -i '/^#host    all             all             127.0.0.1\/32            md5/ a\
     host    '${DEVELOPMENT_DB_NAME}'     '${DEVELOPMENT_DB_USER}'     127.0.0.1\/32            trust\
     host    '${STAGE_DB_NAME}'           '${STAGE_DB_USER}'           127.0.0.1\/32            trust\
-    host    '${PRODUCTION_DB_NAME}'      '${PRODUCTION_DB_USER}'      127.0.0.1\/32            trust' /etc/postgresql/9.3/main/pg_hba.conf
+    host    '${PRODUCTION_DB_NAME}'      '${PRODUCTION_DB_USER}'      127.0.0.1\/32            trust' /etc/postgresql/9.3/ecommerce/pg_hba.conf
 
-    sudo service postgresql restart
+    log_exec sudo service postgresql restart
+    
+    return 0
 }
 
 # $1 is version
