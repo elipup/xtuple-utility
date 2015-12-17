@@ -88,10 +88,10 @@ configure_php() {
     date.timezone = ${TIMEZONE}" /etc/php5/cli/php.ini
 
     # Composer
-    curl -sS https://getcomposer.org/installer | php && \
-    mv composer.phar /usr/local/bin/composer && \
-    mkdir -p /home/${DEPLOYER_NAME}/.composer && \
-    echo "{
+    log_exec curl -sS https://getcomposer.org/installer | sudo php && \
+    log_exec sudo mv composer.phar /usr/local/bin/composer && \
+    log_exec mkdir -p /home/${DEPLOYER_NAME}/.composer && \
+    log_exec echo "{
     \"config\": {
         \"github-oauth\": {
             \"github.com\": \"${GITHUB_TOKEN}\"
@@ -101,26 +101,26 @@ configure_php() {
         \"github-protocols\": [\"https\"]        
     }
 }" > /home/${DEPLOYER_NAME}/.composer/config.json && \
-    sudo chown -R ${DEPLOYER_NAME}:${DEPLOYER_NAME} /home/${DEPLOYER_NAME}/.composer
+    log_exec sudo chown -R ${DEPLOYER_NAME}:${DEPLOYER_NAME} /home/${DEPLOYER_NAME}/.composer
 
     # Drush
-    wget https://github.com/drush-ops/drush/releases/download/8.0.0-rc3/drush.phar && \
-    chmod +x drush.phar && \
-    sudo mv drush.phar /usr/local/bin/drush && \
-    drush init
+    log_exec wget https://github.com/drush-ops/drush/releases/download/8.0.0-rc3/drush.phar && \
+    log_exec chmod +x drush.phar && \
+    log_exec sudo mv drush.phar /usr/local/bin/drush && \
+    log_exec drush init
 
     # Mongo
-    printf "\n" | sudo pecl install mongo && \
-    echo "extension=mongo.so" > /etc/php5/mods-available/mongo.ini && \
-    sudo ln -s /etc/php5/mods-available/mongo.ini /etc/php5/cli/conf.d/20-mongo.ini && \
-    sudo ln -s /etc/php5/mods-available/mongo.ini /etc/php5/fpm/conf.d/20-mongo.ini
+    log_exec printf "\n" | sudo pecl install mongo && \
+    log_exec echo "extension=mongo.so" > /etc/php5/mods-available/mongo.ini && \
+    log_exec sudo ln -s /etc/php5/mods-available/mongo.ini /etc/php5/cli/conf.d/20-mongo.ini && \
+    log_exec sudo ln -s /etc/php5/mods-available/mongo.ini /etc/php5/fpm/conf.d/20-mongo.ini
 
     # PHPUnit
-    wget https://phar.phpunit.de/phpunit-old.phar && \
-    chmod +x phpunit-old.phar && \
-    sudo mv phpunit-old.phar /usr/local/bin/phpunit
+    log_exec wget https://phar.phpunit.de/phpunit-old.phar && \
+    log_exec chmod +x phpunit-old.phar && \
+    log_exec sudo mv phpunit-old.phar /usr/local/bin/phpunit
 
     # Restart PHP and Nginx
-    sudo service php5-fpm restart
-    sudo service nginx restart
+    log_exec sudo service php5-fpm restart
+    log_exec sudo service nginx restart
 }
