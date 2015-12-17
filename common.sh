@@ -101,7 +101,13 @@ install_prereqs() {
                 install_pg_repo
 			 install_mongo_repo
                 sudo apt-get update
-                sudo apt-get -y install axel git whiptail unzip bzip2 wget curl build-essential libssl-dev postgresql-client-$PGVERSION cups python-software-properties openssl libnet-ssleay-perl libauthen-pam-perl libpam-runtime libio-pty-perl perl libavahi-compat-libdnssd-dev python xvfb 
+
+			 install_mongo && \
+			 install_postfix && \
+			 install_php && \
+			 install_ruby && \
+                sudo apt-get -y install axel git whiptail unzip bzip2 wget curl build-essential libssl-dev postgresql-client-$PGVERSION cups python-software-properties openssl libnet-ssleay-perl libauthen-pam-perl libpam-runtime libio-pty-perl perl libavahi-compat-libdnssd-dev python apache2-utils 
+
                 RET=$?
                 if [ $RET -ne 0 ]; then
                     msgbox "Something went wrong installing prerequisites for $DISTRO/$CODENAME. Check the log for more info. "
@@ -114,12 +120,19 @@ install_prereqs() {
                 install_pg_repo
 			 install_mongo_repo
                 sudo apt-get update
-                sudo apt-get -y install python-software-properties software-properties-common xvfb
+
+			 install_mongo && \
+			 install_postfix && \
+			 install_php && \
+			 install_ruby && \
+                sudo apt-get -y install python-software-properties software-properties-common
+
                 if [ ! "$(find /etc/apt/ -name *.list | xargs cat | grep  ^[[:space:]]*deb | grep backports)" ]; then
                     sudo add-apt-repository -y "deb http://ftp.debian.org/debian $(lsb_release -cs)-backports main"
                     sudo apt-get update
                 fi
-                sudo apt-get -y install axel git whiptail unzip bzip2 wget curl build-essential libssl-dev postgresql-client-$PGVERSION
+
+                sudo apt-get -y install axel git whiptail unzip bzip2 wget curl build-essential libssl-dev postgresql-client-9.3 apache2-utils
                 RET=$?
                 if [ $RET -ne 0 ]; then
                     msgbox "Something went wrong installing prerequisites for $DISTRO/$CODENAME. Check the log for more info. "
@@ -200,11 +213,25 @@ set_locale() {
     export TIMEZONE=$(cat /etc/timezone)
 }
 
+clear_ecommerce_info() {
+    unset DEVELOPMENT_DB_NAME
+    unset DEVELOPMENT_DB_USER
+    unset DEVELOPMENT_DB_PASS
+    unset STAGE_DB_NAME
+    unset STAGE_DB_USER
+    unset STAGE_DB_PASS
+    unset PRODUCTION_DB_NAME
+    unset PRODUCTION_DB_USER
+    unset PRODUCTION_DB_PASS
+}
+    
+
 set_ecommerce_info() {
     if [ -z $DEVELOPMENT_DB_NAME ]; then
-        DEVELOPMENT_DB_NAME=$(whiptail --backtitle "$( window_title )" --inputbox "Server Name (Domain name)" 8 60 "development" 3>&1 1>&2 2>&3)
+        DEVELOPMENT_DB_NAME=$(whiptail --backtitle "$( window_title )" --inputbox "Development database name" 8 60 "development" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
+	       clear_ecommerce_info
             return $RET
         else
             export DEVELOPMENT_DB_NAME
@@ -212,9 +239,10 @@ set_ecommerce_info() {
     fi
 
     if [ -z $DEVELOPMENT_DB_USER ]; then
-        DEVELOPMENT_DB_USER=$(whiptail --backtitle "$( window_title )" --inputbox "Server Name (Domain name)" 8 60 "development" 3>&1 1>&2 2>&3)
+        DEVELOPMENT_DB_USER=$(whiptail --backtitle "$( window_title )" --inputbox "Development database user" 8 60 "development" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
+	       clear_ecommerce_info
             return $RET
         else
             export DEVELOPMENT_DB_USER
@@ -222,9 +250,10 @@ set_ecommerce_info() {
     fi
 
     if [ -z $DEVELOPMENT_DB_PASS ]; then
-        DEVELOPMENT_DB_PASS=$(whiptail --backtitle "$( window_title )" --passwordbox "Server Name (Domain name)" 8 60 3>&1 1>&2 2>&3)
+        DEVELOPMENT_DB_PASS=$(whiptail --backtitle "$( window_title )" --passwordbox "Development database password" 8 60 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
+	       clear_ecommerce_info
             return $RET
         else
             export DEVELOPMENT_DB_PASS
@@ -232,9 +261,10 @@ set_ecommerce_info() {
     fi
 
     if [ -z $STAGE_DB_NAME ]; then
-        STAGE_DB_NAME=$(whiptail --backtitle "$( window_title )" --inputbox "Server Name (Domain name)" 8 60 "stage" 3>&1 1>&2 2>&3)
+        STAGE_DB_NAME=$(whiptail --backtitle "$( window_title )" --inputbox "Staging database name" 8 60 "stage" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
+	       clear_ecommerce_info
             return $RET
         else
             export STAGE_DB_NAME
@@ -242,9 +272,10 @@ set_ecommerce_info() {
     fi
 
     if [ -z $STAGE_DB_USER ]; then
-        STAGE_DB_USER=$(whiptail --backtitle "$( window_title )" --inputbox "Server Name (Domain name)" 8 60 "stage" 3>&1 1>&2 2>&3)
+        STAGE_DB_USER=$(whiptail --backtitle "$( window_title )" --inputbox "Staging database user" 8 60 "stage" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
+	       clear_ecommerce_info
             return $RET
         else
             export STAGE_DB_USER
@@ -252,9 +283,10 @@ set_ecommerce_info() {
     fi
 
     if [ -z $STAGE_DB_PASS ]; then
-        STAGE_DB_PASS=$(whiptail --backtitle "$( window_title )" --passwordbox "Server Name (Domain name)" 8 60 3>&1 1>&2 2>&3)
+        STAGE_DB_PASS=$(whiptail --backtitle "$( window_title )" --passwordbox "Staging database password" 8 60 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
+	       clear_ecommerce_info
             return $RET
         else
             export STAGE_DB_PASS
@@ -262,9 +294,10 @@ set_ecommerce_info() {
     fi
 
     if [ -z $PRODUCTION_DB_NAME ]; then
-        PRODUCTION_DB_NAME=$(whiptail --backtitle "$( window_title )" --inputbox "Server Name (Domain name)" 8 60 "production" 3>&1 1>&2 2>&3)
+        PRODUCTION_DB_NAME=$(whiptail --backtitle "$( window_title )" --inputbox "Production database name" 8 60 "production" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
+	       clear_ecommerce_info
             return $RET
         else
             export PRODUCTION_DB_NAME
@@ -272,9 +305,10 @@ set_ecommerce_info() {
     fi
 
     if [ -z $PRODUCTION_DB_USER ]; then
-        PRODUCTION_DB_USER=$(whiptail --backtitle "$( window_title )" --inputbox "Server Name (Domain name)" 8 60 "production" 3>&1 1>&2 2>&3)
+        PRODUCTION_DB_USER=$(whiptail --backtitle "$( window_title )" --inputbox "Production database user" 8 60 "production" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
+	       clear_ecommerce_info
             return $RET
         else
             export PRODUCTION_DB_USER
@@ -282,9 +316,10 @@ set_ecommerce_info() {
     fi
 
     if [ -z $PRODUCTION_DB_PASS ]; then
-        PRODUCTION_DB_PASS=$(whiptail --backtitle "$( window_title )" --passwordbox "Server Name (Domain name)" 8 60 3>&1 1>&2 2>&3)
+        PRODUCTION_DB_PASS=$(whiptail --backtitle "$( window_title )" --passwordbox "Production database password" 8 60 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
+	       clear_ecommerce_info
             return $RET
         else
             export PRODUCTION_DB_PASS
