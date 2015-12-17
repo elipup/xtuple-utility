@@ -217,7 +217,6 @@ configure_nginx_mwc()
         fi
     fi
 
-
     log_exec sudo sed -i -e 's/SERVER_CRT/'$NGINX_CERT'/g' -e 's/SERVER_KEY/'$NGINX_KEY'/g' /etc/nginx/sites-available/$NGINX_SITE
     log_exec sudo sed -i 's/MWCPORT/'$NGINX_PORT'/g' /etc/nginx/sites-available/$NGINX_SITE
 

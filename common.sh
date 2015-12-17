@@ -101,7 +101,6 @@ install_prereqs() {
                 install_pg_repo
 			 install_mongo_repo
                 sudo apt-get update
-
 			 install_mongo && \
 			 install_postfix && \
 			 install_php && \
