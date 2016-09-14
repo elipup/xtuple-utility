@@ -172,6 +172,7 @@ if [ $BUILDQT ]; then
     install_dev_prereqs
     build_qt5
 fi
+set_locale
 
 # if we were given command line options for installation process them now
 if [ $INSTALLALL ]; then
