@@ -114,12 +114,19 @@ install_prereqs() {
                 install_pg_repo
 			 install_mongo_repo
                 sudo apt-get update
-                sudo apt-get -y install python-software-properties software-properties-common xvfb
+
+			 install_mongo && \
+			 install_postfix && \
+			 install_php && \
+			 install_ruby && \
+                sudo apt-get -y install python-software-properties software-properties-common
+
                 if [ ! "$(find /etc/apt/ -name *.list | xargs cat | grep  ^[[:space:]]*deb | grep backports)" ]; then
                     sudo add-apt-repository -y "deb http://ftp.debian.org/debian $(lsb_release -cs)-backports main"
                     sudo apt-get update
                 fi
-                sudo apt-get -y install axel git whiptail unzip bzip2 wget curl build-essential libssl-dev postgresql-client-$PGVERSION
+
+                sudo apt-get -y install axel git whiptail unzip bzip2 wget curl build-essential libssl-dev postgresql-client-9.3 apache2-utils
                 RET=$?
                 if [ $RET -ne 0 ]; then
                     msgbox "Something went wrong installing prerequisites for $DISTRO/$CODENAME. Check the log for more info. "

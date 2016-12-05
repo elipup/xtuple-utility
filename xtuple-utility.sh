@@ -12,6 +12,8 @@ export INSTANCE=xtuple
 export DBTYPE=demo
 export DATABASE=${DBTYPE}${XTVERSION//./}
 export CONTAINER=false
+export PGDATABASE="$DBTYPE""$_XTVERSION"
+export DEPLOYER_NAME=`whoami`
 # import supporting scripts
 source common.sh
 source logging.sh
@@ -167,6 +169,11 @@ source nginx.sh
 source mobileclient.sh
 source openrpt.sh
 source devenv.sh
+source mongo.sh
+source php.sh
+source postfix.sh
+source ruby.sh
+source ecommerce.sh
 
 # kind of hard to build whiptail menus without whiptail installed
 log "Installing pre-requisite packages..."
@@ -178,6 +185,7 @@ if [ $BUILDQT ]; then
     install_dev_prereqs
     build_qt5
 fi
+set_locale
 
 # if we were given command line options for installation process them now
 if [ $INSTALLALL ]; then
