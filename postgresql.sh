@@ -1,6 +1,7 @@
 #!/bin/bash
 
 postgresql_menu() {
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     log "Opened PostgreSQL menu"
 
@@ -45,6 +46,7 @@ postgresql_menu() {
 
 # $1 is mode (auto/manual)
 prepare_database() {
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     check_database_info
     RET=$?
@@ -113,6 +115,7 @@ prepare_database() {
 }
 
 password_menu() {
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     log "Opened password menu"
 
@@ -146,6 +149,7 @@ password_menu() {
 
 # $1 is pg version (9.3, 9.4, etc)
 install_postgresql() {
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     log_arg $1
     log_exec sudo apt-get -y install postgresql-$1 postgresql-client-$1 postgresql-contrib-$1 postgresql-$1-plv8 postgresql-server-dev-$1
@@ -165,6 +169,7 @@ install_postgresql() {
 # $1 is pg version (9.3, 9.4, etc)
 # we don't remove -client because we still need it for managment tasks
 remove_postgresql() {
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     log_arg $1
     if (whiptail --title "Are you sure?" --yesno "Uninstall PostgreSQL $1? Cluster data will be left behind." --yes-button "Yes" --no-button "No" 10 60) then
@@ -181,6 +186,7 @@ remove_postgresql() {
 # $1 is pg version (9.3, 9.4, etc)
 # we don't remove -client because we still need it for managment tasks
 purge_postgresql() {
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     log_arg $1
     if (whiptail --title "Are you sure?" --yesno "Completely remove PostgreSQL $1 and all of the cluster data?" --yes-button "Yes" --no-button "No" 10 60) then
@@ -195,6 +201,7 @@ purge_postgresql() {
 }
 
 list_clusters() {
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     log_arg
     CLUSTERS=()
@@ -219,6 +226,7 @@ list_clusters() {
 # $5 if exists, start at boot
 # $6 is mode (auto/manual) manual if not specified
 provision_cluster() {
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     if [ -z $1 ]; then
         POSTVER=$(whiptail --backtitle "$( window_title )" --inputbox "Enter PostgreSQL Version (make sure it is installed!)" 8 60 "$PGVERSION" 3>&1 1>&2 2>&3)
@@ -408,6 +416,7 @@ provision_cluster() {
 }
 
 provision_ecom_cluster() {
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     set_database_info_manual
     set_ecommerce_info
@@ -443,6 +452,7 @@ provision_ecom_cluster() {
 # $3 is mode (auto/manual)
 # prompt if not provided
 drop_cluster() {
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     if [ -z "$1" ]; then
         POSTVER=$(whiptail --backtitle "$( window_title )" --inputbox "Enter version of cluster to remove" 8 60 "" 3>&1 1>&2 2>&3)
@@ -491,6 +501,7 @@ drop_cluster() {
 }
 
 drop_cluster_menu() {
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     CLUSTERS=()
 
@@ -528,6 +539,7 @@ drop_cluster_menu() {
 
 # $1 is user to reset
 reset_sudo() {
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     check_database_info
     RET=$?
@@ -559,6 +571,7 @@ reset_sudo() {
 
 # $1 is user to reset
 reset_psql() {
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     check_database_info
     RET=$?
@@ -591,6 +604,7 @@ reset_psql() {
 
 #  $1 is globals file to backup to
 backup_globals() {
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     check_database_info
     RET=$?
@@ -624,6 +638,7 @@ backup_globals() {
 
 #  $1 is globals file to restore
 restore_globals() {
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     check_database_info
     RET=$?

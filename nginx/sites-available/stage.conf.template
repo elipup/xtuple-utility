@@ -10,8 +10,8 @@ server {
     error_log /var/log/nginx/{ENVIRONMENT}/error.log;
     root /var/www/{ENVIRONMENT}/drupal/core;
 
-    auth_basic "Restricted";
-    auth_basic_user_file /var/www/.htpasswd;
+#    auth_basic "Restricted";
+#    auth_basic_user_file /var/www/.htpasswd;
 
     include apps/drupal/security.conf;
     include apps/drupal/drupal.conf;

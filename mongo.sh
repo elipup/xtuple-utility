@@ -22,12 +22,21 @@ configure_mongo() {
     mongo_prompt
     
     log_exec sudo mongo admin --eval='db.createUser({ user: "admin", pwd: "'${MONGO_ADMIN_PASS}'", roles: [{ role: "userAdminAnyDatabase", db: "admin" }] })'
-    log_exec sudo mongo admin --eval='db.getSiblingDB("'${DEVELOPMENT_DB_NAME}'").createUser({ user: "'${DEVELOPMENT_DB_USER}'", pwd: "'${DEVELOPMENT_DB_PASS}'", roles: [ "dbOwner"] })'
-    log_exec sudo mongo admin --eval='db.getSiblingDB("'${STAGE_DB_NAME}'").createUser({ user: "'${STAGE_DB_USER}'", pwd: "'${STAGE_DB_PASS}'", roles: [ "dbOwner"] })'
-    log_exec sudo mongo admin --eval='db.getSiblingDB("'${PRODUCTION_DB_NAME}'").createUser({ user: "'${PRODUCTION_DB_USER}'", pwd: "'${PRODUCTION_DB_PASS}'", roles: [ "dbOwner"] })'
+    log_exec sudo mongo admin --eval='db.getSiblingDB("'${ECOMM_DB_NAME}'").createUser({ user: "'${ECOMM_DB_USER}'", pwd: "'${ECOMM_DB_PASS}'", roles: [ "dbOwner"] })'
 
     log_exec sudo cp /etc/mongod.conf /etc/mongod.conf.original
 
     log_exec sudo cp ~/xdruple-server/conf/mongod.conf.yaml /etc/mongod.conf
     log_exec sudo service mongod restart
 }
+
+create_mongo_db_auto() {
+ECOMM_DB_NAME="xd_${DATABASE}"
+ECOMM_DB_USER=xd_admin
+ECOMM_DB_PASS=xd_admin
+  #  log_exec sudo mongo admin --eval='db.createUser({ user: "xd_admin", pwd: "'xd_admin'", roles: [{ role: "userAdminAnyDatabase", db: "admin" }] })'
+    log_exec  sudo mongo ${ECOMM_DB_NAME} --eval='db.dropDatabase()'
+    log_exec sudo mongo admin --eval='db.dropUser("${ECOMM_DB_USER}")'
+    log_exec sudo mongo admin --eval='db.getSiblingDB("'${ECOMM_DB_NAME}'").createUser({ user: "'${ECOMM_DB_USER}'", pwd: "'${ECOMM_DB_PASS}'", roles: [ "dbOwner"] })'
+}
+

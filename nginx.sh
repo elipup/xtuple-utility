@@ -1,6 +1,7 @@
 #!/bin/bash
 
 nginx_menu() {
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     log "Opened nginx menu"
 
@@ -32,6 +33,7 @@ nginx_menu() {
 }
 
 install_nginx() {
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     log "Installing nginx"
     log_arg
@@ -45,6 +47,8 @@ install_nginx() {
 }
 
 clear_nginx_settings() {
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+
     unset NGINX_HOSTNAME
     unset NGINX_DOMAIN
     unset NGINX_SITE
@@ -53,7 +57,9 @@ clear_nginx_settings() {
     unset NGINX_PORT
 }
 
+
 nginx_prompt() {
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     if [ -z $NGINX_HOSTNAME ]; then
         NGINX_HOSTNAME=$(whiptail --backtitle "$( window_title )" --inputbox "Host name (the domain comes next)" 8 60 3>&1 1>&2 2>&3)
@@ -120,7 +126,7 @@ nginx_prompt() {
     fi
 
     if [ -z $NGINX_PORT ]; then
-        NGINX_PORT=$(whiptail --backtitle "$( window_title )" --inputbox "Port number.  Make sure it is available first!" 8 60 "8443" 3>&1 1>&2 2>&3)
+        NGINX_PORT=$(whiptail --backtitle "$( window_title )" --inputbox "Upstream Port number.  Make sure it is available first!" 8 60 "8443" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
             clear_nginx_settings
@@ -132,6 +138,8 @@ nginx_prompt() {
 }
 
 prep_nginx() {
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+
     sudo mv /etc/nginx/nginx.conf /etc/nginx/nginx.conf.original
     sudo cp $WORKDIR/nginx/nginx.conf /etc/nginx/
 
@@ -160,6 +168,8 @@ prep_nginx() {
 # $7 is the port to use
 configure_nginx_mwc()
 {
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+
     log "Configuring nginx"
 
     if [ -n "$1" ]; then
@@ -190,6 +200,8 @@ configure_nginx_mwc()
         NGINX_PORT=$7
     fi
 
+    NGINX_FQDN=${NGINX_HOSTNAME}.${NGINX_DOMAIN}
+
     nginx_prompt
     RET=$?
     if [ $RET -ne 0 ]; then
@@ -198,20 +210,21 @@ configure_nginx_mwc()
 
     log_arg $NGINX_HOSTNAME $NGINX_DOMAIN $NGINX_SITE $NGINX_CERT $NGINX_KEY $NGINX_PORT
 
-    [[ -e /etc/nginx/sites-available/default ]] && sudo rm /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default 2>&1 >/dev/null
-    sudo cp templates/nginx-site /etc/nginx/sites-available/$NGINX_SITE
-    sudo sed -i -e "s#DOMAINNAME#$NGINX_DOMAIN#" -e "s#HOSTNAME#$NGINX_HOSTNAME#" /etc/nginx/sites-available/$NGINX_SITE
+    prep_nginx
+
+    log_exec sudo cp $WORKDIR/templates/nginx-site /etc/nginx/sites-available/$NGINX_FQDN
+    log_exec sudo sed -i -e "s#DOMAINNAME#$NGINX_DOMAIN#" -e "s#HOSTNAME#$NGINX_HOSTNAME#" /etc/nginx/sites-available/$NGINX_FQDN
     RET=$?
     if [ $RET -ne 0 ]; then
         msgbox "Error configuring nginx.  Check site file in /etc/nginx/sites-available"
         return $RET
     fi
 
-    sudo ln -s /etc/nginx/sites-available/$NGINX_SITE /etc/nginx/sites-enabled/$NGINX_SITE
+    log_exec sudo ln -s /etc/nginx/sites-available/$NGINX_FQDN /etc/nginx/sites-enabled/$NGINX_FQDN
 
-    if [ -z "$GEN_SSL" ] || [ "$GEN_SSL" = "true" ]; then
-        sudo mkdir -p $(dirname $NGINX_CERT $NGINX_KEY)
-        sudo openssl req -x509 -newkey rsa:2048 -subj /CN=$NGINX_HOSTNAME.$NGINX_DOMAIN -days 365 -nodes \
+    if [ -z "$4" ] || [ "$4" = "true" ]; then
+        log_exec sudo mkdir -p /etc/xtuple/ssl
+        log_exec sudo openssl req -x509 -newkey rsa:2048 -subj /CN=$NGINX_FQDN -days 365 -nodes \
             -keyout $NGINX_KEY -out $NGINX_CERT
         RET=$?
         if [ $RET -ne 0 ]; then
@@ -220,20 +233,28 @@ configure_nginx_mwc()
         fi
     fi
 
-    log_exec sudo sed -i -e 's/SERVER_CRT/'$NGINX_CERT'/g' -e 's/SERVER_KEY/'$NGINX_KEY'/g' /etc/nginx/sites-available/$NGINX_SITE
-    log_exec sudo sed -i 's/MWCPORT/'$NGINX_PORT'/g' /etc/nginx/sites-available/$NGINX_SITE
 
-    log_exec sudo nginx -s reload
+   log_exec sudo sed -i -e 's#SERVER_CRT#'$NGINX_CERT'#g' -e 's#SERVER_KEY#'$NGINX_KEY'#g' /etc/nginx/sites-available/$NGINX_FQDN
+   log_exec sudo sed -i 's#MWCPORT#'$NGINX_PORT'#g' /etc/nginx/sites-available/$NGINX_FQDN
+
+    log_exec sudo service nginx reload
     RET=$?
     if [ $RET -ne 0 ]; then
+
         msgbox "Reloading nginx configuration failed. Check the log file for errors."
         return $RET
     else
+	if [[ ${INSTALLALL} ]]; then
+        log "nginx installed and configured successfully."
+	else
         msgbox "nginx installed and configured successfully."
+	fi
     fi
 }
 
 nginx_ecom_prompt() {
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+
     if [ -z $NGINX_ECOM_DOMAIN ]; then
         NGINX_ECOM_DOMAIN=$(whiptail --backtitle "$( window_title )" --inputbox "Domain name for ecommerce" 8 60 3>&1 1>&2 2>&3)
         RET=$?
@@ -269,16 +290,20 @@ nginx_ecom_prompt() {
 }
 
 configure_nginx_ecom() {
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+
     log "Configuring nginx"
 
     if [ -n "$1" ]; then
         NGINX_ECOM_DOMAIN=$1
     fi
-    
+
+# What's this?    
     if [ -n "$2" ]; then
         NGINX_DOMAIN_ALIAS=$2
     fi
 
+# don't do the htaccess...
     if [ -n "$3" ]; then
         HTTP_AUTH_PASS=$3
     fi
@@ -287,9 +312,19 @@ configure_nginx_ecom() {
     
     prep_nginx
 
-    environments=("dev" "stage" "live")
-    for ENVIRONMENT in "${environments[@]}"
-    do
+# Include these changes into the general Nginx Site Configuration.
+# Environment should be variable
+# Include SSL by default in each domain config.  Do not separate it out into /conf.d
+# And Create them one at a time.
+# Basically create  it the way we do it for a mobile site, but include the xdruple stuff.
+
+  #  environments=("dev" "stage" "live")
+  #  for ENVIRONMENT in "${environments[@]}"
+
+log "Environment is ${ENVIRONMENT}"
+if [ -n "${ENVIRONMENT}" ];
+then
+    
         # Set dev and live domain aliases (for development)
         log_exec sudo cp $WORKDIR/nginx/sites-available/stage.conf.template /etc/nginx/sites-available/${ENVIRONMENT}.http.conf
         log_exec sudo sed -i "s/{DOMAIN_ALIAS}/${NGINX_DOMAIN_ALIAS}/g" /etc/nginx/sites-available/${ENVIRONMENT}.http.conf
@@ -299,26 +334,29 @@ configure_nginx_ecom() {
         log_exec sudo mkdir -p /var/log/nginx/${ENVIRONMENT}
         log_exec sudo mkdir -p /var/www/${ENVIRONMENT}
 
-        # Set real domain for production usage (with or without SSL)
-        if [ ${ENVIRONMENT} = "live" ]
-        then
-            if [ ${SSL} = "ssl" ]
-            then
-                log_exec sudo cp $WORKDIR/nginx/sites-available/https.conf.template /etc/nginx/sites-available/https.conf
-                log_exec sudo sed -i "s/{DOMAIN}/${NGINX_ECOM_DOMAIN}/g" /etc/nginx/conf.d/ssl.conf
-                log_exec sudo sed -i "s/{DOMAIN}/${NGINX_ECOM_DOMAIN}/g" /etc/nginx/sites-available/https.conf
-                log_exec sudo sed -i "s/{ENVIRONMENT}/${ENVIRONMENT}/g" /etc/nginx/sites-available/https.conf
-                log_exec sudo ln -s /etc/nginx/sites-available/https.conf /etc/nginx/sites-enabled/https.conf
-            else
-                log_exec sudo cp $WORKDIR/nginx/sites-available/http.conf.template /etc/nginx/sites-available/http.conf
-                log_exec sudo sed -i "s/{DOMAIN}/${NGINX_ECOM_DOMAIN}/g" /etc/nginx/sites-available/http.conf
-                log_exec sudo sed -i "s/{ENVIRONMENT}/${ENVIRONMENT}/g" /etc/nginx/sites-available/http.conf
-                log_exec sudo ln -s /etc/nginx/sites-available/http.conf /etc/nginx/sites-enabled/http.conf
-            fi
-        fi
-    done
+#        # Set real domain for production usage (with or without SSL)
+#        if [ ${ENVIRONMENT} = "live" ]
+#        then
+#            if [ ${SSL} = "ssl" ]
+#            then
+#                log_exec sudo cp $WORKDIR/nginx/sites-available/https.conf.template /etc/nginx/sites-available/https.conf
+#                log_exec sudo sed -i "s/{DOMAIN}/${NGINX_ECOM_DOMAIN}/g" /etc/nginx/conf.d/ssl.conf
+#                log_exec sudo sed -i "s/{DOMAIN}/${NGINX_ECOM_DOMAIN}/g" /etc/nginx/sites-available/https.conf
+#                log_exec sudo sed -i "s/{ENVIRONMENT}/${ENVIRONMENT}/g" /etc/nginx/sites-available/https.conf
+#                log_exec sudo ln -s /etc/nginx/sites-available/https.conf /etc/nginx/sites-enabled/https.conf
+#            else
+#                log_exec sudo cp $WORKDIR/nginx/sites-available/http.conf.template /etc/nginx/sites-available/http.conf
+#                log_exec sudo sed -i "s/{DOMAIN}/${NGINX_ECOM_DOMAIN}/g" /etc/nginx/sites-available/http.conf
+#                log_exec sudo sed -i "s/{ENVIRONMENT}/${ENVIRONMENT}/g" /etc/nginx/sites-available/http.conf
+#                log_exec sudo ln -s /etc/nginx/sites-available/http.conf /etc/nginx/sites-enabled/http.conf
+#            fi
+#        fi
+#    done
+else
+log "No ENVIRONMENT set"
+fi
 
-    log_exec chown -R ${DEPLOYER_NAME}:${DEPLOYER_NAME} /var/www/*
+    log_exec sudo chown -R ${DEPLOYER_NAME}:${DEPLOYER_NAME} /var/www/*
 
     log_exec sudo htpasswd -b -c /var/www/.htpasswd xtuple ${HTTP_AUTH_PASS}
 
@@ -326,6 +364,7 @@ configure_nginx_ecom() {
 }
 
 remove_nginx() {
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     if (whiptail --title "Are you sure?" --yesno "Uninstall nginx?" --yes-button "Yes" --no-button "No" 10 60) then
         log "Uninstalling nginx..."
@@ -337,3 +376,110 @@ remove_nginx() {
     fi
 
 }
+
+set_local_hosts(){
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+
+(echo '127.0.0.1 '${NGINX_ECOM_DOMAIN} ${NGINX_SITE}'') | sudo tee -a /etc/hosts >/dev/null
+
+}
+
+setup_shop_prodiem(){
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+log "ENV is ${ENVIRONMENT}"
+log "NGINX_ECOM_DOMAIN is ${NGINX_ECOM_DOMAIN}"
+
+sudo mkdir -p /var/log/nginx/${ENVIRONMENT}
+
+(echo '
+
+## Return (no rewrite) server block.
+#server {
+#    listen 80;
+#    server_name '${NGINX_ECOM_DOMAIN}';
+#    return 301 $scheme://'${NGINX_ECOM_DOMAIN}'$request_uri;
+#}
+
+server {
+    listen 80;
+    server_name '${NGINX_ECOM_DOMAIN}';
+    limit_conn arbeit 32;
+
+    access_log /var/log/nginx/'${ENVIRONMENT}'/access.log;
+    error_log /var/log/nginx/'${ENVIRONMENT}'/error.log;
+    root /var/www/'${ENVIRONMENT}'/drupal/core;
+    include apps/drupal/security.conf;
+    include apps/drupal/drupal.conf;
+}'
+) | sudo tee -a /etc/nginx/sites-enabled/${ENVIRONMENT}.conf >/dev/null
+
+}
+
+
+# This is ignored.
+setup_erp_prodiem(){
+
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+
+(echo '
+upstream node-erp {
+  server 127.0.0.1:8443;
+}
+
+# auto redirect http -> https
+server {
+  listen 80;
+  server_name erp.prodiem.xd;
+  return 301 https://$host$request_uri;
+}
+
+server {
+  listen 443 ssl;
+  ssl on;
+  ssl_certificate /etc/xtuple/ssl/server.crt;
+  ssl_certificate_key /etc/xtuple/ssl/server.key;
+
+  server_name erp.prodiem.xd;
+
+  index index.html index.htm;
+
+  access_log /var/log/nginx/erp.prodiem.xd.access.log;
+  error_log /var/log/nginx/erp.prodiem.xd.error.log;
+
+  # https://wiki.mozilla.org/Security/Server_Side_TLS
+  ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+  ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:kEDH+AESGCM:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-DSS-AES128-SHA256:DHE-RSA-AES256-SHA256:DHE-DSS-AES256-SHA:DHE-RSA-AES256-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:AES:CAMELLIA:DES-CBC3-SHA:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!aECDH:!EDH-DSS-DES-CBC3-SHA:!EDH-RSA-DES-CBC3-SHA:!KRB5-DES-CBC3-SHA;
+  ssl_prefer_server_ciphers on;
+#  ssl_dhparam /etc/ssl/certs/dhparam.pem;
+#  ssl_session_cache shared:SSL:60m;
+  ssl_session_timeout 60m;
+
+  location / {
+    proxy_pass https://node-erp;
+    proxy_redirect off;
+    proxy_set_header X-NginX-Proxy true;
+    proxy_set_header Host $http_host;
+    proxy_set_header X-Forwarded-Host $http_host;
+    proxy_set_header X-Forwarded-Port $server_port;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    # for socket.io
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+
+    #error_page 502 = @handle_node_down;
+  }
+
+  # 502 gateway error, the upstream node service is likely down
+  location @handle_node_down {
+    # show a nice picture of a bunny or something
+  }
+}') | sudo tee -a /etc/nginx/sites-enabled/erp.prodiem.xd.conf >/dev/null
+
+
+}
+
+
