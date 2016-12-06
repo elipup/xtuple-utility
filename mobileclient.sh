@@ -1,14 +1,15 @@
 #!/bin/bash
 
 mwc_menu() {
-
-    log "Opened Web Client menu"
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+ log "Opened Web Client menu"
 
     while true; do
         PGM=$(whiptail --backtitle "$( window_title )" --menu "$( menu_title Web\ Client\ Menu )" 0 0 9 --cancel-button "Cancel" --ok-button "Select" \
             "1" "Install xTuple Web Client" \
-            "2" "Remove xTuple Web Client" \
-            "3" "Return to main menu" \
+            "2" "Install Web Client Extras" \
+            "3" "Remove xTuple Web Client" \
+            "4" "Return to main menu" \
             3>&1 1>&2 2>&3)
 
         RET=$?
@@ -18,8 +19,9 @@ mwc_menu() {
         else
             case "$PGM" in
             "1") install_mwc_menu ;;
-            "2") log_choice remove_mwc ;;
-            "3") break ;;
+            "2") log_choice mobileextras_menu ;;
+            "3") log_choice remove_mwc ;;
+            "4") break ;;
             *) msgbox "Error. How did you get here? >> mwc_menu / $PGM" && break ;;
             esac
         fi
@@ -28,6 +30,7 @@ mwc_menu() {
 }
 
 install_mwc_menu() {
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     TAGVERSIONS=$(git ls-remote --tags git://github.com/xtuple/xtuple.git | grep -v '{}' | cut -d '/' -f 3 | cut -d v -f2 | sort -rV | head -10)
     HEADVERSIONS=$(git ls-remote --heads git://github.com/xtuple/xtuple.git | grep -Po '\d_\d+_x' | sort -rV | head -5)
@@ -91,27 +94,59 @@ install_mwc_menu() {
     fi
 
     log "Chose database $DATABASE"
+   
+    # unset $ERP_DBCONN
+    ERP_DBCONN="psql -Atq -U ${PGUSER} -h ${PGHOST} -p ${PGPORT} -d ${DATABASE}"
+    export ERP_DBCONN=${ERP_DBCONN}
+
+log "ERP_DBCONN is $ERP_DBCONN"
+
+# This sets XTAPP and XTVER based off what the user selected for the database.  We use these to determine how build_app works
+# and if we're going to allow private-extensions on postbooks
+    inspect_xtapp
+    inspect_xtver
+    inspect_xtext
+    inspect_xtpkg
+    does_it_smell_like_mwc_in_here
+    inspect_this_db
 
     if (whiptail --title "Private Extensions" --yesno "Would you like to install the commercial extensions? You will need a commercial database or this step will fail." 10 60) then
         log "Installing the commercial extensions"
         PRIVATEEXT=true
-        GITHUBNAME=$(whiptail --backtitle "$( window_title )" --inputbox "Enter your GitHub username" 8 60 3>&1 1>&2 2>&3)
-        RET=$?
-        if [ $RET -ne 0 ]; then
-            return $RET
-        fi
 
-        GITHUBPASS=$(whiptail --backtitle "$( window_title )" --passwordbox "Enter your GitHub password" 8 60 3>&1 1>&2 2>&3)
+      if [[ -z ${GITHUB_TOKEN} ]]; then
+	getsettoken
+	generate_github_token
         RET=$?
         if [ $RET -ne 0 ]; then
             return $RET
         fi
+      fi
+
     else
         log "Not installing the commercial extensions"
         PRIVATEEXT=false
     fi
 
-    log_choice install_mwc $MWCVERSION $MWCREFSPEC $MWCNAME $PRIVATEEXT $DATABASE $GITHUBNAME $GITHUBPASS
+
+    if (whiptail --title "xDruple Extension" --yesno "Would you like to install the xDruple extension?" 10 60) then
+        log "Installing the xDruple extension"
+        XDRUPLEEXT=true
+
+       if [[ -z ${GITHUB_TOKEN} ]]; then
+	generate_github_token
+        RET=$?
+        if [ $RET -ne 0 ]; then
+            return $RET
+        fi
+       fi
+
+    else
+        log "Not installing the commercial extensions"
+        XDRUPLEEXT=false
+    fi
+
+    log_choice install_mwc $MWCVERSION $MWCREFSPEC $MWCNAME $PRIVATEEXT $DATABASE $GITHUBNAME $GITHUBPASS $XDRUPLEEXT
 }
 
 
@@ -122,9 +157,25 @@ install_mwc_menu() {
 # $5 is database name
 # $6 is github username
 # $7 is github password
+# $8 is to install xdruple ext
+
 install_mwc() {
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+    inspect_xtapp
+    inspect_xtver
+    inspect_xtext
+    inspect_xtpkg
+    does_it_smell_like_mwc_in_here
+    inspect_this_db
 
     log "installing web client"
+
+    # unset ERP_DBCONN
+    ERP_DBCONN="psql -Atq -U ${PGUSER} -h ${PGHOST} -p ${PGPORT} -d ${DATABASE}"
+    export ERP_DBCONN=${ERP_DBCONN}
+
+    log "ERP_DBCONN is $ERP_DBCONN"
+
 
     export MWCVERSION=$1
     export MWCREFSPEC=$2
@@ -135,7 +186,6 @@ install_mwc() {
     else
         PRIVATEEXT=true
     fi
-    
     if [ -z "$5" ] && [ -z "$PGDATABASE" ]; then
         log "No database name passed to install_mwc... exiting."
         do_exit
@@ -145,10 +195,17 @@ install_mwc() {
 
     export GITHUBNAME=$6
     export GITHUBPASS=$7
-    log_arg $MWCVERSION $MWCNAME $PRIVATEEXT $PGDATABASE
+
+    log_arg $MWCVERSION $MWCNAME $PRIVATEEXT $PGDATABASE $XDRUPLEEXT
 
     log "Creating xtuple user..."
     log_exec sudo useradd xtuple -m -s /bin/bash
+
+if type "n" > /dev/null; then
+
+    log "Found n"
+
+else
 
     log "Installing n..."
     cd $WORKDIR    
@@ -162,6 +219,9 @@ install_mwc() {
     # need to install npm of course...why doesn't 2.3.14 exist?
     log_exec sudo npm install -g npm@1.4.28
 
+fi
+
+
     # cleanup existing folder or git will throw a hissy fit
     sudo rm -rf /opt/xtuple/$MWCVERSION/"$MWCNAME"
 
@@ -171,13 +231,23 @@ install_mwc() {
     log_exec sudo chown -R xtuple.xtuple /opt/xtuple
 
     # main code
-    log_exec sudo su - xtuple -c "cd /opt/xtuple/$MWCVERSION/"$MWCNAME" && git clone https://github.com/xtuple/xtuple.git && cd  /opt/xtuple/$MWCVERSION/"$MWCNAME"/xtuple && git checkout $MWCREFSPEC && git submodule update --init --recursive && npm install bower && npm install"
+    log "Token is $GITHUB_TOKEN"
+    log_exec sudo su - xtuple -c "cd /opt/xtuple/$MWCVERSION/"$MWCNAME" && git clone https://"$GITHUB_TOKEN":x-oauth-basic@github.com/xtuple/xtuple.git && cd  /opt/xtuple/$MWCVERSION/"$MWCNAME"/xtuple && git checkout $MWCREFSPEC && git submodule update --init --recursive && npm install bower && npm install"
+
     # private extensions
     if [ $PRIVATEEXT = "true" ]; then
         log "Installing the commercial extensions"
-        log_exec sudo su xtuple -c "cd /opt/xtuple/$MWCVERSION/"$MWCNAME" && git clone https://"$GITHUBNAME":"$GITHUBPASS"@github.com/xtuple/private-extensions.git && cd /opt/xtuple/$MWCVERSION/"$MWCNAME"/private-extensions && git checkout $MWCREFSPEC && git submodule update --init --recursive && npm install"
+        log_exec sudo su xtuple -c "cd /opt/xtuple/$MWCVERSION/"$MWCNAME" && git clone https://"$GITHUB_TOKEN":x-oauth-basic@github.com/xtuple/private-extensions.git && cd /opt/xtuple/$MWCVERSION/"$MWCNAME"/private-extensions && git checkout $MWCREFSPEC && git submodule update --init --recursive && npm install"
     else
         log "Not installing the commercial extensions"
+    fi
+
+    # xdruple extension
+    if [ $XDRUPLEEXT = "true" ]; then
+        log "Installing the xdruple extension"
+        log_exec sudo su xtuple -c "cd /opt/xtuple/$MWCVERSION/"$MWCNAME" && git clone https://"$GITHUB_TOKEN":x-oauth-basic@github.com/xtuple/xdruple-extension.git && cd /opt/xtuple/$MWCVERSION/"$MWCNAME"/xdruple-extension && git submodule update --init --recursive && npm install"
+    else
+        log "Not installing the xdruple extension"
     fi
 
     if [ ! -f /opt/xtuple/$MWCVERSION/"$MWCNAME"/xtuple/node-datasource/sample_config.js ]; then
@@ -263,12 +333,17 @@ install_mwc() {
         do_exit
     fi
 
-    log_exec sudo su - xtuple -c "cd $XTDIR && ./scripts/build_app.js -c /etc/xtuple/$MWCVERSION/"$MWCNAME"/config.js"
-    RET=$?
-    if [ $RET -ne 0 ]; then
-        log "buildapp failed to run. Check output and try again"
-        do_exit
-    fi
+################
+# BUILD_APP.JS
+################
+
+build_app_fun
+
+
+################
+# END BUILD_APP.JS
+################
+
 
     # now that we have the script, start the server!
     if [ $DISTRO = "ubuntu" ]; then
@@ -298,12 +373,66 @@ install_mwc() {
         do_exit
     fi
 
+# fi
+
+if [[ ${XDRUPLEEXT} == "true" && ${FRESH_XDRUPLE} == "true" ]]; then
+
+        log "Installing OAuth2 Tokens"
+        PRIVATEEXT=true
+
+        generateOA
+        insertOA
+
+        generateEnvPHP
+	setup_shop_prodiem
+	updatedemo
+        createdb -U admin ${ECOMM_DB_NAME}
+        create_mongo_db_auto #Creates a mongo db the same name.
+
+if [[ ${INSTALLALL} ]]; then
+	runConsolePHP
+fi
+
+# if (whiptail --title "Generate OA Token" --yesno "This looks like a fresh xDruple install. Would you like to setup the OAuth2 Tokens for xDruple?" 10 60) then
+#        log "Installing OAuth2 Tokens"
+#        PRIVATEEXT=true
+
+#        generateOA
+#        insertOA
+#        generateEnvPHP
+#	updatedemo
+#        ECOMM_DB_NAME="xd_${DATABASE}"
+#        createdb -U admin ${ECOMM_DB_NAME}
+#        create_mongo_db_auto #Creates a mongo db the same name.
+#	runConsolePHP
+#        RET=$?
+#        if [ $RET -ne 0 ]; then
+#            return $RET
+#        fi
+#    else
+#        log "Not configuring xDruple Tokens and site."
+#    fi
+
+
+
+fi
+
+
     # assuming etho for now... hostname -I will give any non-local address if we wanted
     IP=`ip -f inet -o addr show eth0|cut -d\  -f 7 | cut -d/ -f 1`
     log "All set! You should now be able to log on to this server at https://$IP:8443 with username admin and password admin. Make sure you change your password!"
+    log "\n
+All set! You should now be able to log on to this server at https://$IP:8443 \n
+with username admin and password admin. \n
+"
+
+
+
 
 }
 
 remove_mwc() {
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+
     msgbox "Uninstalling the mobile client is not yet supported"
 }

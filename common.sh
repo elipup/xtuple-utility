@@ -98,10 +98,14 @@ install_prereqs() {
 
     case "$DISTRO" in
         "ubuntu")
-                install_pg_repo
+               install_pg_repo
 			 install_mongo_repo
                 sudo apt-get update
-                sudo apt-get -y install axel git whiptail unzip bzip2 wget curl build-essential libssl-dev postgresql-client-$PGVERSION cups python-software-properties openssl libnet-ssleay-perl libauthen-pam-perl libpam-runtime libio-pty-perl perl libavahi-compat-libdnssd-dev python xvfb jq s3cmd python-magic
+			 install_mongo && \
+			 install_postfix && \
+			 install_php && \
+			 install_ruby && \
+               sudo apt-get -y install axel git whiptail unzip bzip2 wget curl build-essential libssl-dev postgresql-client-$PGVERSION cups python-software-properties openssl libnet-ssleay-perl libauthen-pam-perl libpam-runtime libio-pty-perl perl libavahi-compat-libdnssd-dev python apache2-utils jq s3cmd
                 RET=$?
                 if [ $RET -ne 0 ]; then
                     msgbox "Something went wrong installing prerequisites for $DISTRO/$CODENAME. Check the log for more info. "
@@ -204,121 +208,50 @@ test_connection() {
 
 set_locale() {
     locale-gen en_US.UTF-8
-    export TIMEZONE=$(cat /etc/timezone)
+#    export TIMEZONE=$(cat /etc/timezone)
+    export TIMEZONE=America/New_York
 }
 
 clear_ecommerce_info() {
-    unset DEVELOPMENT_DB_NAME
-    unset DEVELOPMENT_DB_USER
-    unset DEVELOPMENT_DB_PASS
-    unset STAGE_DB_NAME
-    unset STAGE_DB_USER
-    unset STAGE_DB_PASS
-    unset PRODUCTION_DB_NAME
-    unset PRODUCTION_DB_USER
-    unset PRODUCTION_DB_PASS
+    unset ECOMM_DB_NAME
+    unset ECOMM_DB_USER
+    unset ECOMM_DB_PASS
 }
-    
 
 set_ecommerce_info() {
-    if [ -z $DEVELOPMENT_DB_NAME ]; then
-        DEVELOPMENT_DB_NAME=$(whiptail --backtitle "$( window_title )" --inputbox "Development database name" 8 60 "development" 3>&1 1>&2 2>&3)
+    if [ -z $ECOMM_DB_NAME ]; then
+           ECOMM_DB_NAME=$(whiptail --backtitle "$( window_title )" --inputbox "Ecommerce database name" 8 60 "ecommerce" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
 	       clear_ecommerce_info
             return $RET
         else
-            export DEVELOPMENT_DB_NAME
+            export ECOMM_DB_NAME
         fi
     fi
 
-    if [ -z $DEVELOPMENT_DB_USER ]; then
-        DEVELOPMENT_DB_USER=$(whiptail --backtitle "$( window_title )" --inputbox "Development database user" 8 60 "development" 3>&1 1>&2 2>&3)
+    if [ -z $ECOMM_DB_USER ]; then
+        ECOMM_DB_USER=$(whiptail --backtitle "$( window_title )" --inputbox "Ecommerce database user" 8 60 "ecommerce" 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
 	       clear_ecommerce_info
             return $RET
         else
-            export DEVELOPMENT_DB_USER
+            export ECOMM_DB_USER
         fi
     fi
 
-    if [ -z $DEVELOPMENT_DB_PASS ]; then
-        DEVELOPMENT_DB_PASS=$(whiptail --backtitle "$( window_title )" --passwordbox "Development database password" 8 60 3>&1 1>&2 2>&3)
+    if [ -z $ECOMM_DB_PASS ]; then
+        ECOMM_DB_PASS=$(whiptail --backtitle "$( window_title )" --passwordbox "Ecommerce database password" 8 60 3>&1 1>&2 2>&3)
         RET=$?
         if [ $RET -ne 0 ]; then
 	       clear_ecommerce_info
             return $RET
         else
-            export DEVELOPMENT_DB_PASS
+            export ECOMM_DB_PASS
         fi
     fi
 
-    if [ -z $STAGE_DB_NAME ]; then
-        STAGE_DB_NAME=$(whiptail --backtitle "$( window_title )" --inputbox "Staging database name" 8 60 "stage" 3>&1 1>&2 2>&3)
-        RET=$?
-        if [ $RET -ne 0 ]; then
-	       clear_ecommerce_info
-            return $RET
-        else
-            export STAGE_DB_NAME
-        fi
-    fi
-
-    if [ -z $STAGE_DB_USER ]; then
-        STAGE_DB_USER=$(whiptail --backtitle "$( window_title )" --inputbox "Staging database user" 8 60 "stage" 3>&1 1>&2 2>&3)
-        RET=$?
-        if [ $RET -ne 0 ]; then
-	       clear_ecommerce_info
-            return $RET
-        else
-            export STAGE_DB_USER
-        fi
-    fi
-
-    if [ -z $STAGE_DB_PASS ]; then
-        STAGE_DB_PASS=$(whiptail --backtitle "$( window_title )" --passwordbox "Staging database password" 8 60 3>&1 1>&2 2>&3)
-        RET=$?
-        if [ $RET -ne 0 ]; then
-	       clear_ecommerce_info
-            return $RET
-        else
-            export STAGE_DB_PASS
-        fi
-    fi
-
-    if [ -z $PRODUCTION_DB_NAME ]; then
-        PRODUCTION_DB_NAME=$(whiptail --backtitle "$( window_title )" --inputbox "Production database name" 8 60 "production" 3>&1 1>&2 2>&3)
-        RET=$?
-        if [ $RET -ne 0 ]; then
-	       clear_ecommerce_info
-            return $RET
-        else
-            export PRODUCTION_DB_NAME
-        fi
-    fi
-
-    if [ -z $PRODUCTION_DB_USER ]; then
-        PRODUCTION_DB_USER=$(whiptail --backtitle "$( window_title )" --inputbox "Production database user" 8 60 "production" 3>&1 1>&2 2>&3)
-        RET=$?
-        if [ $RET -ne 0 ]; then
-	       clear_ecommerce_info
-            return $RET
-        else
-            export PRODUCTION_DB_USER
-        fi
-    fi
-
-    if [ -z $PRODUCTION_DB_PASS ]; then
-        PRODUCTION_DB_PASS=$(whiptail --backtitle "$( window_title )" --passwordbox "Production database password" 8 60 3>&1 1>&2 2>&3)
-        RET=$?
-        if [ $RET -ne 0 ]; then
-	       clear_ecommerce_info
-            return $RET
-        else
-            export PRODUCTION_DB_PASS
-        fi
-    fi
 }
 
 # define some colors if the tty supports it

@@ -14,15 +14,20 @@ export DATABASE=${DBTYPE}${XTVERSION//./}
 export CONTAINER=false
 export PGDATABASE="$DBTYPE""$_XTVERSION"
 export DEPLOYER_NAME=`whoami`
+
+
+
 # import supporting scripts
 source common.sh
 source logging.sh
+
+log "Deployer is ${DEPLOYER_NAME}"
 
 # process command line arguments
 # start with :, which tells it to be silent about errors
 # a doesn't require an argument, so it doesn't have a : after it
 # d does require an argument, so it is indicated by putting a : after the d, and so on
-while getopts ":acd:ip:n:H:D:qhx:t:-:" opt; do
+while getopts ":acd:ip:n:qhx:-:" opt; do
   case $opt in
     a)
         INSTALLALL=true
@@ -42,16 +47,6 @@ while getopts ":acd:ip:n:H:D:qhx:t:-:" opt; do
         # Name this instance
         INSTANCE=$OPTARG
         log "Instance name set to $INSTANCE via command line argument -n"
-        ;;
-    H)
-        # Hostname
-        NGINX_HOSTNAME=$OPTARG
-        log "NGINX hostname set to $NGINX_HOSTNAME via command line argument -H"
-        ;;
-    D)
-        # Domain
-        NGINX_DOMAIN=$OPTARG
-        log "NGINX domain set to $NGINX_DOMAIN via command line argument -D"
         ;;
     q)
         # that is our cue to build the Qt development environment
@@ -80,15 +75,12 @@ while getopts ":acd:ip:n:H:D:qhx:t:-:" opt; do
         echo -e "  -p\tOverride PostgreSQL version"
         echo -e "  -q\tBuild and Install Qt (currently $( latest_version qt_sdk ))"
         echo -e "  -n\tOverride instance name"
-        echo -e "  -H\tSet NGINX hostname"
-        echo -e "  -D\tSet NGINX domain"
         echo -e "  -x\tOverride xTuple version (applies to web client and database)"
         echo -e "  -t\tSpecify the type of database to grab (demo/quickstart/empty)"
         exit 0;
         ;;
     \?)
         log "Invalid option: -$OPTARG"
-        exit 1;
         ;;
     :)
         log "Option -$OPTARG requires an argument."
@@ -174,9 +166,17 @@ source php.sh
 source postfix.sh
 source ruby.sh
 source ecommerce.sh
+source xdrupletoken.sh
+source tokenmanagement.sh
+source getsettoken.sh
+source mobileextra.sh
+source build_app.sh
+
+
 
 # kind of hard to build whiptail menus without whiptail installed
 log "Installing pre-requisite packages..."
+
 install_prereqs
 
 # if we're supposed to build Qt, lets do that before anything else because it takes *FOREVER*
@@ -190,17 +190,57 @@ set_locale
 # if we were given command line options for installation process them now
 if [ $INSTALLALL ]; then
     log "Executing full provision..."
-    install_postgresql $PGVERSION
+    export XDRUPLEEXT=true
+    export FRESH_XDRUPLE=true
+    export PRIVATEEXT=true
+
+if [[ -e xdruplesettings.ini ]]; then
+
+source xdruplesettings.ini
+log "Using xdruplesettings.ini"
+
+
+fi
+
+
+install_postgresql $PGVERSION
+
+(echo '
+# User rules for xtau
+'${DEPLOYER_NAME}' ALL=(ALL) NOPASSWD:ALL
+') | sudo tee -a /etc/sudoers.d/90-xtau-users >/dev/null
+
+
+
+install_nginx
+# clear_nginx_settings
+prep_nginx
+set_local_hosts
+configure_nginx_mwc ${NGINX_HOSTNAME} ${NGINX_DOMAIN} ${NGINX_SITE} ${GEN_SSL} ${NGINX_CERT} ${NGINX_KEY} ${NGINX_PORT}
+# configure_nginx_ecom ${NGINX_ECOM_DOMAIN} ${NGINX_DOMAIN_ALIAS} ${HTTP_AUTH_PASS}
+# setup_shop_prodiem
+# setup_erp_prodiem
+
+install_php
+php_prompt
+ssh_prompt
+# getsettoken
+configure_php
+configure_mongo
+install_composer
+
+
     drop_cluster $PGVERSION main auto
     provision_cluster $PGVERSION $INSTANCE 5432 "$LANG" true auto
     prepare_database auto 
     download_demo auto $WORKDIR/tmp.backup $XTVERSION $DBTYPE
     restore_database $WORKDIR/tmp.backup $DATABASE
     rm -f $WORKDIR/tmp.backup{,.md5sum}
-    install_mwc $XTVERSION v$XTVERSION $INSTANCE false $DATABASE
-    install_nginx
-    configure_nginx "$NGINX_HOSTNAME" "$NGINX_DOMAIN" "$INSTANCE-$DATABASE" true /etc/xtuple/$XTVERSION/$INSTANCE/ssl/server.{crt,key} 8443
+    install_mwc $XTVERSION v$XTVERSION $INSTANCE true $DATABASE '' '' true
     setup_webprint
+
+    show_config
+
 fi
 
 # It is okay to run them both, but if either one runs we want to exit after as these
