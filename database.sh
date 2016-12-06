@@ -1,6 +1,7 @@
 #!/bin/bash
 
 database_menu() {
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     log "Opened database menu"
 
@@ -51,6 +52,7 @@ database_menu() {
 # $3 is version to grab
 # $4 is type of database to grab (empty, demo, manufacturing, distribution, masterref)
 download_demo() {
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     if [ $1 = "manual" ]; then
         MODE="manual"
@@ -165,6 +167,7 @@ download_demo() {
 }
 
 download_latest_demo() {
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     VERSION="$( latest_version db )"
     log "Determined latest database version to be $VERSION"
@@ -220,6 +223,7 @@ download_latest_demo() {
 #  $1 is database file to backup to
 #  $2 is name of new database (if not provided, prompt)
 backup_database() {
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     check_database_info
     RET=$?
@@ -264,6 +268,7 @@ backup_database() {
 #  $1 is database file to restore
 #  $2 is name of new database (if not provided, prompt)
 restore_database() {
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     check_database_info
     RET=$?
@@ -304,6 +309,7 @@ restore_database() {
 # $2 is new pilot
 # prompt if not provided
 carve_pilot() {
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     check_database_info
     RET=$?
@@ -359,6 +365,7 @@ carve_pilot() {
 }
 
 create_database_from_file() {
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     check_database_info
     RET=$?
@@ -397,6 +404,7 @@ create_database_from_file() {
 }
 
 list_databases() {
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     check_database_info
     RET=$?
@@ -415,6 +423,7 @@ list_databases() {
 }
 
 drop_database_menu() {
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     check_database_info
     RET=$?
@@ -442,6 +451,7 @@ drop_database_menu() {
 # $1 is name
 # prompt if not provided
 drop_database() {
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     check_database_info
     RET=$?
@@ -476,6 +486,7 @@ drop_database() {
 }
 
 rename_database_menu() {
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     check_database_info
     RET=$?
@@ -510,6 +521,7 @@ rename_database_menu() {
 # $2 is new name
 # prompt if not provided
 rename_database() {
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     if [ -z "$1" ]; then
         SOURCE=$(whiptail --backtitle "$( window_title )" --inputbox "Enter name of database to rename" 8 60 "" 3>&1 1>&2 2>&3)
@@ -544,6 +556,7 @@ rename_database() {
 }
 
 inspect_database_menu() {
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     check_database_info
     RET=$?
@@ -569,6 +582,7 @@ inspect_database_menu() {
 }
 
 get_database_list() {
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     check_database_info
 
@@ -580,6 +594,7 @@ get_database_list() {
 
 # $1 is database name
 remove_connect_priv() {
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     check_database_info
     RET=$?
@@ -592,6 +607,7 @@ remove_connect_priv() {
 
 # $1 is database name
 kill_database_connections() {
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     check_database_info
     RET=$?
@@ -604,6 +620,7 @@ kill_database_connections() {
 
 # $1 is database name
 restore_connect_priv() {
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     check_database_info
     RET=$?
@@ -616,6 +633,7 @@ restore_connect_priv() {
 
 # $1 is database name to inspect
 inspect_database() {
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     VAL=`psql -At -U $PGUSER -h $PGHOST -p $PGPORT -d $1 -c "SELECT data FROM ( \
         SELECT 1,'Co: '||fetchmetrictext('remitto_name') AS data \
@@ -631,6 +649,8 @@ inspect_database() {
 }
 
 set_database_info_select() {
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+
     CLUSTERS=()
 
     while read -r line; do 
@@ -674,6 +694,7 @@ set_database_info_select() {
 }
 
 set_database_info_manual() {
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     if [ -z $PGHOST ]; then
         PGHOST=$(whiptail --backtitle "$( window_title )" --inputbox "Postgres IP address" 8 60 "localhost" 3>&1 1>&2 2>&3)
@@ -719,6 +740,8 @@ set_database_info_manual() {
 }
 
 clear_database_info() {
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+
     unset PGHOST
     unset PGPASSWORD
     unset PGPORT
@@ -726,6 +749,8 @@ clear_database_info() {
 }
 
 check_database_info() {
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
+
     if [ -z $PGHOST ] || [ -z $PGPORT ] || [ -z $PGUSER ] || [ -z $PGPASSWORD ]; then
         if (whiptail --yes-button "Select Cluster" --no-button "Manually Enter"  --yesno "Would you like to choose from installed clusters, or manually enter server information?" 10 60) then
             set_database_info_select
@@ -748,6 +773,7 @@ check_database_info() {
 
 # $1 is database
 upgrade_database() {
+log "In: ${BASH_SOURCE} ${FUNCNAME[0]}"
 
     check_database_info
 
@@ -835,4 +861,76 @@ upgrade_database() {
     msgbox "Database $DATABASE\nVersion $NEWVER"
 
     log_arg $DATABASE
+}
+
+inspect_xtapp() {
+log "In: S{BASH_SOURCE} ${FUNCNAME[0]}"
+
+XTAPP=$(psql -At -U $PGUSER -h $PGHOST -p $PGPORT -d $DATABASE -c "SELECT fetchmetrictext('Application');")
+export XTAPP=${XTAPP}
+}
+
+inspect_xtver() {
+log "In: S{BASH_SOURCE} ${FUNCNAME[0]}"
+
+XTVER=$(psql -At -U $PGUSER -h $PGHOST -p $PGPORT -d $DATABASE -c "SELECT fetchmetrictext('ServerVersion');")
+export XTVER=${XTVER}
+}
+
+inspect_xtext() {
+log "In: S{BASH_SOURCE} ${FUNCNAME[0]}"
+
+XTEXT=$(psql -At -U $PGUSER -h $PGHOST -p $PGPORT -d $DATABASE -c "SELECT ext_name||' '||ext_location from xt.ext order by 1;")
+export XTEXT=$XTEXT
+}
+
+inspect_xtpkg() {
+log "In: S{BASH_SOURCE} ${FUNCNAME[0]}"
+
+XTPKG=$(psql -At -U $PGUSER -h $PGHOST -p $PGPORT -d $DATABASE -c "SELECT pkghead_name||' '||pkghead_version from pkghead order by 1;")
+export XTPKG=${XTPKG}
+}
+
+does_it_smell_like_mwc_in_here() {
+log "In: S{BASH_SOURCE} ${FUNCNAME[0]}"
+
+HASMWC=$(psql -At -U $PGUSER -h $PGHOST -p $PGPORT -d $DATABASE -c "SELECT EXISTS ( SELECT 1    FROM   pg_catalog.pg_class c     JOIN   pg_catalog.pg_namespace n ON n.oid = c.relnamespace    WHERE  n.nspname = 'xt'    AND    c.relname = 'ext'AND    c.relkind = 'r');")
+export HASMWC=$HASMWC
+}
+
+
+updatedemo() {
+# This creates the UOMs required
+# And creates the itemgroups for trucks
+
+log "In: S{BASH_SOURCE} ${FUNCNAME[0]}"
+psql -At -U $PGUSER -h $PGHOST -p $PGPORT -d $DATABASE -c "INSERT INTO xdruple.xd_site(xd_site_name, xd_site_url, xd_site_notes) SELECT '${ECOMM_NAME}','${ECOMM_SITE_URL}','ecomm site'; \
+INSERT INTO uom(uom_name, uom_descrip, uom_item_dimension) SELECT 'IN','Inch',TRUE; \
+INSERT INTO xdruple.xd_commerce_product_data (item_id) ( \
+  SELECT \
+    item_id \
+  FROM item \
+  WHERE true \
+    AND item_sold \
+    AND item_active \
+    AND item_number IN ('YTRUCK1','BTRUCK1','WTRUCK1') \
+    AND item_classcode_id IN ( \
+      SELECT classcode_id \
+      FROM classcode \
+      WHERE true \
+        AND classcode_code NOT ILIKE ('SERVICES%') \
+    ) \
+    AND item_id NOT IN ( \
+      SELECT item_id \
+      FROM xdruple.xd_commerce_product_data \
+    ) \
+);\
+INSERT INTO itemgrp(itemgrp_name,itemgrp_descrip,itemgrp_catalog) SELECT 'Trucks','Trucks Collection',TRUE; \
+INSERT INTO itemgrpitem (itemgrpitem_itemgrp_id,itemgrpitem_item_id,itemgrpitem_item_type) \
+SELECT a.itemgrp_id AS parent,b.itemgrp_id AS child, 'G' AS type  \
+FROM itemgrp a, itemgrp b \
+WHERE a.itemgrp_name = 'Trucks' \
+AND b.itemgrp_name='Collectors Line (MPS)';"
+
+
 }
